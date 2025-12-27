@@ -8,6 +8,8 @@ import string
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -173,7 +175,9 @@ def SetupDriver():
             chrome_options.add_argument(f'--load-extension=extra/nopecha')
     
     try:
-        BrowserClient = webdriver.Chrome(options=chrome_options)
+        # Use webdriver-manager to automatically get matching ChromeDriver
+        service = Service(ChromeDriverManager().install())
+        BrowserClient = webdriver.Chrome(service=service, options=chrome_options)
         Success("✅ Chrome driver initialized successfully")
         return BrowserClient
     except Exception as e:
