@@ -3,62 +3,140 @@ import os
 import sys
 import yaml
 import time
+import random
+import string
+from datetime import datetime
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options  # CHANGED FROM EDGE TO CHROME
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException
 
-# Import from modules folder
-from modules.logger import *
-from modules.Usernames import GenerateUsername
-# Password generation (if you have it in modules)
-try:
-    from modules.password import GeneratePassword
-except:
-    # If password module doesn't exist, use simple generation
-    import random
-    import string
-    def GeneratePassword():
-        chars = string.ascii_letters + string.digits + "!@#$%"
-        password = ''.join(random.choices(chars, k=12))
-        return 'Aa1!' + password[4:]  # Ensure it meets requirements
+# ============================================================================
+# LOGGER FUNCTIONS
+# ============================================================================
+
+class Colors:
+    RESET = '\033[0m'
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    BOLD = '\033[1m'
+
+def get_timestamp():
+    return datetime.now().strftime("%H:%M:%S")
+
+def Banner():
+    banner = f"""
+{Colors.CYAN}{Colors.BOLD}
+╔═══════════════════════════════════════════════════════╗
+║                                                       ║
+║        Roblox Account Generator                       ║
+║        Railway Edition                                ║
+║                                                       ║
+╚═══════════════════════════════════════════════════════╝
+{Colors.RESET}
+"""
+    print(banner)
+
+def Info(message):
+    print(f"{Colors.BLUE}[{get_timestamp()}] [INFO]{Colors.RESET} {message}")
+
+def Success(message):
+    print(f"{Colors.GREEN}[{get_timestamp()}] [SUCCESS]{Colors.RESET} {message}")
+
+def Warning(message):
+    print(f"{Colors.YELLOW}[{get_timestamp()}] [WARNING]{Colors.RESET} {message}")
+
+def Error(message):
+    print(f"{Colors.RED}[{get_timestamp()}] [ERROR]{Colors.RESET} {message}")
+
+# ============================================================================
+# USERNAME GENERATION
+# ============================================================================
+
+def GenerateUsername():
+    """Generate a random Roblox username"""
+    adjectives = [
+        'Cool', 'Epic', 'Pro', 'Super', 'Mega', 'Ultra', 'Hyper', 'Ninja', 
+        'Shadow', 'Dark', 'Light', 'Fire', 'Ice', 'Thunder', 'Storm', 'Wild',
+        'Brave', 'Swift', 'Steel', 'Golden', 'Silver', 'Royal', 'Noble', 'Mighty'
+    ]
+    
+    nouns = [
+        'Gamer', 'Player', 'Warrior', 'Master', 'Legend', 'Hero', 'Champion', 
+        'King', 'Dragon', 'Wolf', 'Tiger', 'Phoenix', 'Knight', 'Hunter', 
+        'Slayer', 'Raider', 'Striker', 'Fighter', 'Ranger', 'Wizard', 'Ninja'
+    ]
+    
+    username = random.choice(adjectives) + random.choice(nouns) + str(random.randint(100, 9999))
+    return username
+
+# ============================================================================
+# PASSWORD GENERATION
+# ============================================================================
+
+def GeneratePassword(length=12):
+    """Generate a random password that meets Roblox requirements"""
+    password_chars = [
+        random.choice(string.ascii_uppercase),
+        random.choice(string.ascii_lowercase),
+        random.choice(string.digits),
+    ]
+    
+    all_chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    remaining_length = length - len(password_chars)
+    password_chars.extend(random.choices(all_chars, k=remaining_length))
+    
+    random.shuffle(password_chars)
+    return ''.join(password_chars)
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
 
 # Load configuration
-with open('config.yml', 'r') as file:
-    Core = yaml.safe_load(file)
+try:
+    with open('config.yml', 'r') as file:
+        Core = yaml.safe_load(file)
+except FileNotFoundError:
+    Warning("config.yml not found, using defaults")
+    Core = {}
 
-# Override config with environment variables for Railway
+# Override with environment variables for Railway
 if os.getenv('RAILWAY_ENVIRONMENT'):
     Info("🚂 Railway environment detected")
-    Core['Headless'] = True  # Force headless on Railway
-    
+    Core['Headless'] = True
+
 # Environment variable overrides
-if os.getenv('ACCOUNTS_TO_CREATE'):
-    Core['Accounts_To_Create'] = int(os.getenv('ACCOUNTS_TO_CREATE'))
-if os.getenv('USE_NOPECHA'):
-    Core['Use_Nopecha'] = os.getenv('USE_NOPECHA').lower() == 'true'
-if os.getenv('NOPECHA_KEY'):
-    Core['NOPECHA_KEY'] = os.getenv('NOPECHA_KEY')
-if os.getenv('RANDOM_PASSWORD'):
-    Core['Random_Password'] = os.getenv('RANDOM_PASSWORD').lower() == 'true'
-if os.getenv('HAS_COOKIES_PROMPT'):
-    Core['Has_Cookies_Prompt'] = os.getenv('HAS_COOKIES_PROMPT').lower() == 'true'
-if os.getenv('USE_PROXY'):
-    Core['Use_Proxy'] = os.getenv('USE_PROXY').lower() == 'true'
-if os.getenv('PROXY'):
-    Core['Proxy'] = os.getenv('PROXY')
-if os.getenv('HEADLESS'):
-    Core['Headless'] = os.getenv('HEADLESS').lower() == 'true'
+Core['Accounts_To_Create'] = int(os.getenv('ACCOUNTS_TO_CREATE', Core.get('Accounts_To_Create', 1)))
+Core['Use_Nopecha'] = os.getenv('USE_NOPECHA', str(Core.get('Use_Nopecha', False))).lower() == 'true'
+Core['NOPECHA_KEY'] = os.getenv('NOPECHA_KEY', Core.get('NOPECHA_KEY', ''))
+Core['Random_Password'] = os.getenv('RANDOM_PASSWORD', str(Core.get('Random_Password', True))).lower() == 'true'
+Core['Fixed_Password'] = os.getenv('FIXED_PASSWORD', Core.get('Fixed_Password', 'TestPass123!'))
+Core['Has_Cookies_Prompt'] = os.getenv('HAS_COOKIES_PROMPT', str(Core.get('Has_Cookies_Prompt', False))).lower() == 'true'
+Core['Use_Proxy'] = os.getenv('USE_PROXY', str(Core.get('Use_Proxy', False))).lower() == 'true'
+Core['Proxy'] = os.getenv('PROXY', Core.get('Proxy', ''))
+Core['Headless'] = os.getenv('HEADLESS', str(Core.get('Headless', True))).lower() == 'true'
+Core['Capture_Timeout_Minutes'] = int(os.getenv('CAPTCHA_TIMEOUT_MINUTES', Core.get('Capture_Timeout_Minutes', 5)))
+Core['Accounts_File'] = os.getenv('ACCOUNTS_FILE', Core.get('Accounts_File', 'accounts.txt'))
+Core['Cookies_File'] = os.getenv('COOKIES_FILE', Core.get('Cookies_File', 'cookies.txt'))
 
 BrowserClient = None
+
+# ============================================================================
+# DRIVER SETUP
+# ============================================================================
 
 def SetupDriver():
     """Setup Chrome driver with Railway compatibility"""
     global BrowserClient
     
-    # Chrome options - CHANGED FROM EDGE
     chrome_options = Options()
     
     # CRITICAL: Railway/Docker requires these flags
@@ -88,14 +166,13 @@ def SetupDriver():
         chrome_options.add_argument(f'--proxy-server={Core["Proxy"]}')
         Info(f"Using proxy: {Core['Proxy']}")
     
-    # Nopecha extension support
+    # Nopecha extension
     if Core.get('Use_Nopecha'):
         Info("Nopecha CAPTCHA solver enabled")
         if os.path.exists('extra/nopecha'):
             chrome_options.add_argument(f'--load-extension=extra/nopecha')
     
     try:
-        # CHANGED FROM EDGE TO CHROME
         BrowserClient = webdriver.Chrome(options=chrome_options)
         Success("✅ Chrome driver initialized successfully")
         return BrowserClient
@@ -104,13 +181,17 @@ def SetupDriver():
         sys.exit(1)
 
 def CheckDriver(driver):
-    """Check if driver is still alive, restart if needed"""
+    """Check if driver is still alive"""
     try:
         driver.current_url
         return driver
     except:
         Warning("Driver closed, restarting...")
         return SetupDriver()
+
+# ============================================================================
+# ACCOUNT GENERATION
+# ============================================================================
 
 def GenerateAccount():
     """Generate a single Roblox account"""
@@ -146,7 +227,6 @@ def GenerateAccount():
         wait = WebDriverWait(BrowserClient, 10)
         
         # Month
-        import random
         month_dropdown = wait.until(EC.presence_of_element_located((By.ID, "MonthDropdown")))
         month_dropdown.click()
         months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -233,6 +313,10 @@ def GenerateAccount():
         
         return False
 
+# ============================================================================
+# MAIN GENERATION LOOP
+# ============================================================================
+
 def Generation():
     """Main generation loop"""
     global BrowserClient
@@ -269,6 +353,10 @@ def Generation():
     
     if BrowserClient:
         BrowserClient.quit()
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
 
 if __name__ == "__main__":
     Banner()
